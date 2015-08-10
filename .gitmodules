@@ -1,0 +1,7 @@
+[submodule "Arduino-Makefile"]
+	path = Arduino-Makefile
+	url = git://github.com/sudar/Arduino-Makefile
+[submodule "libraries/EventManager"]
+	path = libraries/EventManager
+	url = https://github.com/igormiktor/arduino-EventManager.git
+	branch = GenericListeners

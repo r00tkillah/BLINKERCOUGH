@@ -1,0 +1,8 @@
+#!/bin/bash
+
+PORT2=/dev/ttyUSB1
+make && \
+make upload && \
+MONITOR_PORT=$PORT2 make upload && \
+make monitor && \
+MONITOR_PORT=$PORT2 make monitor

