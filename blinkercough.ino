@@ -23,6 +23,7 @@
 #include "mac.h"
 #include "i2c.h"
 #include "util.h"
+#include "address.h"
 #include <EventManager.h>
 #include <SoftwareSerial.h>
 #include <stdint.h>
@@ -130,12 +131,16 @@ void setup()
 {
     pinMode(13, OUTPUT);
 
-
     Serial.begin(115200);
     init_debug();
 
-    randomSeed(analogRead(0));
-    mac.set_address(random(4096));
+    AddressStorage.begin();
+    if (!AddressStorage.present()) {
+        auto randaddr = AddressStorage.generate();
+        debug("storing 0x%04x into prom", randaddr);
+        AddressStorage.store(randaddr);
+    }
+    mac.set_address(AddressStorage.load());
     debug("This station's address is 0x%04x", mac.get_address());
 
     mac.set_baud_invert(IR_BAUD, false);
