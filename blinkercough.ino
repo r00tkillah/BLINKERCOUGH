@@ -46,7 +46,7 @@
 // BC replies <nothing>
 //
 // BC may give debug information with prefix
-// DBG: 
+// DBG:
 
 
 EventManager eventManager;
@@ -152,7 +152,7 @@ void setup()
 
     eventManager.addListener(BlinkerMac::ValidFrameRecievedEvent,
                              &frameCB);
- 
+
     eventManager.addListener(BlinkerMac::InvalidFrameRecievedEvent,
                              &frameCB);
 
