@@ -112,7 +112,7 @@ void IRFrame::hexdump(IRFrame *frame)
 {
     uint8_t *blob = frame->blob();
     for (uint16_t i = 0; i < sizeof(IRFrame); i += 8) {
-        debugstart("03%d ", i);
+        debugstart("%03d ", i);
         for (uint8_t j = 0; j < 8; j++) {
             debugcont("%02x ", blob[i+j]);
         }
