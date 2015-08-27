@@ -52,7 +52,7 @@
 EventManager eventManager;
 
 
-char commandbuf[20];
+char commandbuf[21];
 uint8_t pos = 0;
 
 typedef void (*CB)(int eventCode, int eventParam);
