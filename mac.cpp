@@ -129,7 +129,7 @@ void BlinkerMac::recv(const uint8_t c)
     // if you haven't gotten a byte in a while, then what you have
     // is probably garbage.
     if (packet_in_progress && stalled()) {
-        Serial.println("aborting rcv");
+        debug("aborting rcv");
         IRFrame::hexdump(buf);
         reset();
         return;
@@ -164,6 +164,7 @@ void BlinkerMac::recv(const uint8_t c)
                     auto newbuf = FrameFactory.alloc();
                     IRFrame::copy(newbuf, buf);
                     eventManager.queueEvent(PacketNeedsRelayEvent, (int)newbuf);
+                    debugend();
                     return;
                 } else {
                     debugcont("too many hops.. eating");
@@ -176,11 +177,13 @@ void BlinkerMac::recv(const uint8_t c)
             auto newbuf = FrameFactory.alloc();
             IRFrame::copy(newbuf, buf);
             eventManager.queueEvent(ValidFrameRecievedEvent, (int)newbuf);
+            debugend();
             return;
         } else {
             auto newbuf = FrameFactory.alloc();
             IRFrame::copy(newbuf, buf);
             eventManager.queueEvent(InvalidFrameRecievedEvent, (int)newbuf);
+            debugend();
             reset();
         }
     }
