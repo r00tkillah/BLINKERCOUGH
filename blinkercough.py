@@ -26,6 +26,7 @@ import sys
 import os
 import struct
 import random
+import select
 import subprocess
 from smbus import SMBus
 
@@ -48,14 +49,17 @@ class SerialDevice:
 
     def read_input(self):
         """reads any input and prings out any debug info"""
-        while True:
-            response = self.ser.readline().strip()
-            # print "response '%s'" % response
-            if response.startswith("DBG"):
-                print response
-            elif response:
-                return response
-
+        stop_polling = False
+        inputs = [self.ser]
+        outputs = []
+        while not stop_polling:
+            readable, writable, exceptional = select.select(inputs, outputs, inputs)
+            for fd in readable:
+                line = fd.readline()
+                if line.startswith("DBG"):
+                    sys.stdout.write(line)
+                elif line.strip():
+                    return line.strip()
 
     def wait_for_startup(self):
         while True:
@@ -74,9 +78,30 @@ class SerialDevice:
         time.sleep(0.1)
 
     def read_register(self, address):
-        cmd = "READ REGISTER %02x\r\n" % address
+        cmd = "READ %02x\r\n" % address
+        print cmd.strip()
         self.ser.write(cmd)
-        response = self.read_input()
+        buf = ""
+        inputs = [self.ser]
+        outputs = []
+        stop_polling = False
+        response = None
+        while not stop_polling:
+            readable, writable, exceptional = select.select(inputs, outputs, inputs, 1)
+            for fd in readable:
+                char = fd.read()
+                buf += char
+                if char == '\n':
+                    if buf.startswith("DBG"):
+                        sys.stdout.write(buf)
+                        buf = ""
+                    elif buf.strip():
+                       response = buf.strip()
+                       stop_polling = True
+            if not readable:
+                # if we timeout, try again
+                self.ser.write(cmd)
+        decoded_response = None
         try:
             decoded_response = binascii.unhexlify(response)
         except TypeError:
@@ -85,7 +110,7 @@ class SerialDevice:
         return decoded_response
 
     def write_register(self, address, data):
-        cmd = "WRITE REGISTER %02x %02x\r\n" % (address, data)
+        cmd = "WRITE %02x %02x\r\n" % (address, data)
         self.ser.write(cmd)
         self.ser.flush()
         time.sleep(0.01)
@@ -134,20 +159,25 @@ class BlinkerCough:
 
     def poll(self):
         """call this regularly to look for incoming data"""
-        data = []
-        #i = 0
+        data = ''
+        i = 0
         while True:
-            rx_depth = self.device.read_register(0)
+            rx_depth = struct.unpack('B', self.device.read_register(0))[0]
+            print "rx_depth = ", rx_depth
             if rx_depth == 0:
-                return
+                break
             c = (self.device.read_register(1))
-            data.append(c)
-            #print "i=%d d=%s" % (i, str(c))
+            data += c
+            print "i=%d d=%s" % (i, binascii.hexlify(c))
             time.sleep(0.1)
-            #i+= 1
+            i+= 1
         if data:
-            (source, dest, hops, data, crc) = struct.unpack(BlinkerCough.fmt, data)
+            (source, dest, hops, data, crc) = struct.unpack(BlinkerCough.fmt, data[::-1])
+            print "source: %04x" % source
+            print "dest: %04x" % dest
+            print "hops: %d" % hops
             if BlinkerCough.receive_hook:
+                print "calling BC recv hook"
                 BlinkerCough.receive_hook(source, data)
 
     def get_address(self):

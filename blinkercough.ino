@@ -33,8 +33,8 @@
 #include <Wire.h>
 
 
-#define READ_CMD "READ REGISTER "
-#define WRITE_CMD "WRITE REGISTER "
+#define READ_CMD "READ "
+#define WRITE_CMD "WRITE "
 
 //SERIAL PROTOCOL
 // gives register interface like i2cregs
