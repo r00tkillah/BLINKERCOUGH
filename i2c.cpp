@@ -213,11 +213,11 @@ void i2cRegisters::txenqueue(uint8_t data)
     if (txq == NULL) {
         txq = FrameFactory.alloc();
     }
-    if (txq_depth < sizeof(IRFrame) - 1) {
+    if (txq_depth < sizeof(IRFrame)) {
         ((IRFrame*)txq)->blob()[txq_depth] = data;
         txq_depth++;
     }
-    if (txq_depth == sizeof(IRFrame) - 1) {
+    if (txq_depth == sizeof(IRFrame)) {
         debug("filled tx queue.. sending");
         //we just filled the tx queue and are ready to xmit
         IRFrame *frame = FrameFactory.alloc();
