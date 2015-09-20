@@ -255,7 +255,7 @@ class CommandResponsePacket:
 
     def pack(self):
         return struct.pack(CommandResponsePacket.fmt,
-                           self.handle, '\xff'*111)
+                           self.handle, '\xff'*116)
 
     @classmethod
     def unpack(cls, data):
