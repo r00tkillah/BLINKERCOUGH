@@ -163,6 +163,7 @@ IRFrame* _FrameFactory::alloc()
             if (!allocated.get(i)) {
                 allocated.set(i, true);
                 ret = &(frames[i]);
+                memset((void*)ret, 0, sizeof(IRFrame));
                 break;
             }
         }
@@ -185,6 +186,7 @@ void _FrameFactory::free(IRFrame *item)
         if (item == NULL) {
             return;
         }
+        memset((void*)item, 0, sizeof(IRFrame));
         for (uint8_t i = 0; i < NUMFRAMES; i++) {
             if (item == &(frames[i])) {
                 allocated.set(i, false);
