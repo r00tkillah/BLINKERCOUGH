@@ -26,13 +26,14 @@
 extern EventManager eventManager;
 
 #define I2CTXEVENT 500
+#define I2CTXQEVENT 501
 
 i2cRegisters i2cRegs;
 
 void xmit(int event, int param);
 GenericCallable<void(int,int)> i2c_xmit(xmit);
 MemberFunctionCallable<i2cRegisters> recv_hook(&i2cRegs, &i2cRegisters::recvHook);
-
+MemberFunctionCallable<i2cRegisters> txenqueue_hook(&i2cRegs, &i2cRegisters::txenqueueHook);
 
 void i2cReceiveCallback(int count)
 {
@@ -78,6 +79,7 @@ void i2cRegisters::begin()
     Wire.onRequest(i2cRequestCallback);
 
     eventManager.addListener(I2CTXEVENT, &i2c_xmit);
+    eventManager.addListener(I2CTXQEVENT, &txenqueue_hook);
     eventManager.addListener(BlinkerMac::ValidFrameRecievedEvent, &recv_hook);
 }
 
@@ -103,7 +105,7 @@ void i2cRegisters::write(uint8_t address, uint8_t data)
 {
     switch (address) {
     case 3:
-        i2cRegs.txenqueue(data);
+        eventManager.queueEvent(I2CTXQEVENT, (int)data);
         break;
 
     case 4:
@@ -129,14 +131,11 @@ void i2cRegisters::write(uint8_t address, uint8_t data)
         }
     case 6: //new secret register: send a garbage packet
         {
-            debug("sending random packet!");
-            i2cRegs.txenqueue(data);
-            if (txq) {
-                txq_depth = 0;
-            }
+            auto frame = FrameFactory.alloc();
             for (uint16_t i = 0; i < sizeof(IRFrame); i++) {
-                txenqueue(random(256));
+                frame->blob()[i] = random(256);
             }
+            eventManager.queueEvent(I2CTXEVENT, (int)frame);
         }
 
     default:
@@ -208,8 +207,9 @@ void i2cRegisters::recvHook(int event, int param)
     FrameFactory.free(frame);
 }
 
-void i2cRegisters::txenqueue(uint8_t data)
+void i2cRegisters::txenqueueHook(int event, int param)
 {
+    uint8_t data = param;
     if (txq == NULL) {
         txq = FrameFactory.alloc();
     }

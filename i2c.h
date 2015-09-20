@@ -37,6 +37,12 @@ public:
     //public b/c of declaration of hook in global space
     void recvHook(int event, int param);
 
+    //to be called when we want to enqueue a byte, but goes through
+    //the event loop to get out of the interrupt context.
+    //enqueues a byte into the transmit buffer
+    void txenqueueHook(int event, int param);
+
+
     //write a "register" to be called from i2cReceiveCallback
     void write(uint8_t address, uint8_t data);
 
@@ -47,10 +53,6 @@ private:
     //read a "register" specified in address to be called form
     //i2cRequestCallback
     uint8_t read();
-
-    //enqueue a byte into the transmit buffer
-    void txenqueue(uint8_t data);
-
 
     volatile uint8_t address; //stores address of read operation
 
