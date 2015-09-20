@@ -165,6 +165,7 @@ void BlinkerMac::recv(const uint8_t c)
                     IRFrame::copy(newbuf, buf);
                     eventManager.queueEvent(PacketNeedsRelayEvent, (int)newbuf);
                     debugend();
+                    reset();
                     return;
                 } else {
                     debugcont("too many hops.. eating");
@@ -178,6 +179,7 @@ void BlinkerMac::recv(const uint8_t c)
             IRFrame::copy(newbuf, buf);
             eventManager.queueEvent(ValidFrameRecievedEvent, (int)newbuf);
             debugend();
+            reset();
             return;
         } else {
             auto newbuf = FrameFactory.alloc();
