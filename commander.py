@@ -29,8 +29,9 @@ def output_hook(output):
 def terminated_hook(code):
     print "command exited with exit code", code
 
-def print_hook(packet):
-    print binascii.unhlexify(packet)
+def print_hook(source, packet):
+    print "packet from", source
+    print binascii.hexlify(packet)
 
 if len(sys.argv) < 3:
     print "usage script <i2c bus or serial tty> <action>"
