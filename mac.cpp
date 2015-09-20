@@ -59,7 +59,6 @@ void BlinkerMac::write_prefix()
 
 bool BlinkerMac::prefix_hit(uint8_t input)
 {
-    debug("prefix state: %d; input=%02x", prefix_state, input);
     if (prefix_state == 0) {
         if (input == packet_prefix[0]) {
             prefix_state = 1;
