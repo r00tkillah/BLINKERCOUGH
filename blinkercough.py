@@ -193,7 +193,7 @@ class BlinkerCough:
 
 class CommandPacket:
     """represents a comand packet.  Mostly just serialize and deserialize"""
-    fmt = '<HB113s'
+    fmt = '<HB'+str(BlinkerCough.data_len - 3)+'s'
     magic = 0x1234
 
     def __init__(self, submagic, data):
@@ -212,7 +212,7 @@ class CommandPacket:
         return cls(submagic, unpacked_data)
 
 class CommandRunPacket:
-    fmt = '<113s'
+    fmt = '<118s'
     submagic = 0x1
 
     def __init__(self, cmd):
@@ -236,7 +236,7 @@ class CommandRunPacket:
         return cls(cmd)
 
 class CommandResponsePacket:
-    fmt = '<H111s'
+    fmt = '<H116s'
     submagic = 0x2
 
     def __init__(self, handle):
@@ -253,7 +253,7 @@ class CommandResponsePacket:
         return cls(handle)
 
 class CommandOutputPacket:
-        fmt = '<H111s'
+        fmt = '<H116s'
         submagic = 0x3
 
         def __init__(self, handle, output):
@@ -280,7 +280,7 @@ class CommandOutputPacket:
             return cls(handle, out)
 
 class CommandTerminatedPacket:
-    fmt = '<HH109s'
+    fmt = '<HH114s'
     submagic = 0x4
 
     def __init__(self, handle, returncode):
@@ -291,7 +291,7 @@ class CommandTerminatedPacket:
         return struct.pack(CommandTerminatedPacket.fmt,
                            self.handle,
                            self.returncode,
-                           '\xff'*109)
+                           '\xff'*114)
 
     @classmethod
     def unpack(cls, data):
