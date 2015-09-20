@@ -129,7 +129,8 @@ class i2cDevice:
 
 
 class BlinkerCough:
-    fmt = '=HHB121sH'
+    data_len = 128-(2+2+1+2)
+    fmt = '=HHB'+str(data_len)+'sH'
     receive_hook = None # to be called when packet recvd
 
     def __init__(self, device):
