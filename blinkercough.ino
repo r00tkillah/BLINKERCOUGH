@@ -84,7 +84,10 @@ static void process_command(char i)
         int data;
         sscanf_P(commandbuf, PSTR(WRITE_CMD "%x %x"), &address, &data);
         i2cRegs.write(address, data);
-    }
+     } else {
+         commandbuf[sizeof(commandbuf)-1] = 0;
+         debug("invalid command: '%s'", commandbuf);
+     }
 
     pos = 0;
     memset((void*)commandbuf, 0, sizeof(commandbuf));
