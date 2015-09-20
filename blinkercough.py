@@ -315,9 +315,10 @@ class CommandRunner:
     output_hook = None
     terminated_hook = None
 
-    def __init__(self):
+    def __init__(self, bc):
         self.handle = None
         self.state = 'idle'
+        self.bc = bc
 
     def run_remote_command(self, dest, cmd):
         self.dest = dest
@@ -340,20 +341,47 @@ class CommandRunner:
             cmdresp = CommandResponsePacket(handle)
             cmdpkt =  CommandPacket(CommandResponsePacket.submagic, cmdresp.pack())
             CommandRunner.send_hook(source, cmdpkt.pack())
+
+            print "chilling to give other guy chance to think about things"
+            then = datetime.now()
+            while True:
+                self.bc.poll()
+                if (datetime.now() - then).total_seconds() >= 15:
+                    break
+            print "done"
             p = subprocess.Popen(run_pkt.cmd, shell=True, stderr = subprocess.STDOUT, stdout = subprocess.PIPE)
             (stdout, stderr) = p.communicate()
-            outchunks = self.chunkstring(stdout, 111)
+            outchunks = self.chunkstring(stdout, 116)
+            print "command run.  chunks of output", len(outchunks)
             for chunk in outchunks:
                 outpkt = CommandOutputPacket(handle, chunk)
                 cmdpkt = CommandPacket(CommandOutputPacket.submagic, outpkt.pack())
-                send_hook(source, cmdpkt.pack())
+                print "sending output packet"
+                CommandRunner.send_hook(source, cmdpkt.pack())
+                print "chilling to give other guy chance to think about things"
+                then = datetime.now()
+                while True:
+                    self.bc.poll()
+                    if (datetime.now() - then).total_seconds() >= 15:
+                        break
+                print "done"
             termpkt = CommandTerminatedPacket(handle, p.returncode)
             cmdpkt = CommandPacket(CommandTerminatedPacket.submagic, termpkt.pack())
-            send_hook(source, cmdpkt.pack())
+            print "chilling to give other guy chance to think about things"
+            then = datetime.now()
+            while True:
+                self.bc.poll()
+                if (datetime.now() - then).total_seconds() >= 15:
+                    break
+            print "done"
+            CommandRunner.send_hook(source, cmdpkt.pack())
 
         if cmd_pkt.submagic == CommandResponsePacket.submagic:
+            print "packet is commadn response packet"
             resp_packet = CommandResponsePacket.unpack(cmd_pkt.data)
             self.handle = resp_packet.handle
+            print "handle is %04x" % self.handle
+            
         elif cmd_pkt.submagic == CommandOutputPacket.submagic:
             out_pkt = CommandOutputPacket.unpack(cmd_pkt.data)
             if CommandRunner.output_hook:
@@ -361,7 +389,7 @@ class CommandRunner:
         elif cmd_pkt.submagic == CommandTerminatedPacket.submagic:
             term_pkt = CommandTerminatedPacket.unpack(cmd_pkt.data)
             if CommandRunner.terminated_hook:
-                terminated_hook(term_pkt.returncode)
+                CommandRunner.terminated_hook(term_pkt.returncode)
 
 if __name__ == "__main__":
     # test harness of sorts for commandpacket
