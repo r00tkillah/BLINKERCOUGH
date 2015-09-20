@@ -205,8 +205,7 @@ void i2cRegisters::recvHook(int event, int param)
         IRFrame::copy((IRFrame*)rxq, frame);
         rxq_depth = sizeof(IRFrame);
     }
-    //we omit the free of param here b/c the serial one should clean
-    //up for us
+    FrameFactory.free(frame);
 }
 
 void i2cRegisters::txenqueue(uint8_t data)

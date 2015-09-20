@@ -116,8 +116,11 @@ static void FrameCallback(int event, IRFrame *frame)
             debugcont("0x4x", frame->destination);
         }
         debugend();
-
-        FrameFactory.free(frame);
+        //we don't call free here b/c
+        //i2cRegisters::recvHook does
+        //this is hack b/c event manager
+        //can't free resources
+        // see https://github.com/igormiktor/arduino-EventManager/issues/7
     } else if (event == BlinkerMac::InvalidFrameRecievedEvent) {
             debug("Invalid packet recieved!");
             IRFrame::hexdump(frame);
