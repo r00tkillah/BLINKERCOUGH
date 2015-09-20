@@ -262,7 +262,7 @@ class CommandOutputPacket:
             self.output = output
 
         def pack(self):
-            zeros = 111 - len(self.output)
+            zeros = 116 - len(self.output)
             if zeros > 1:
                 self.output += '\x00'
                 self.output += '\xff'*zeros
