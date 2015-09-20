@@ -21,6 +21,7 @@
 #ifndef _CODEC_H
 #define _CODEC_H
 
+#include "util.h"
 #include <stdint.h>
 #include <Arduino.h>
 #include <SoftwareSerial.h>
@@ -61,18 +62,17 @@ public:
 
     bool decode_byte(uint8_t input, uint8_t &output)
     {
-        Serial.print(" [");
-        Serial.print(input, HEX);
+        debugcont(" [%02X", input);
         decoder_cnt = (decoder_cnt + 1) % BYTESTUFF;
         if (decoder_cnt % BYTESTUFF == 0) {
             if (input != 0xFF) {
-                Serial.print("?");
+                debugcont("?");
             }
-            Serial.print("!] ");
+            debugcont("!] ");
             //input should be 0xFF here
             return false;
         }
-        Serial.print("] ");
+        debugcont("] ");
         output = input;
         return true;
     }
