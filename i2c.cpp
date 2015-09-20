@@ -203,6 +203,8 @@ void i2cRegisters::recvHook(int event, int param)
         rxq = FrameFactory.alloc();
         IRFrame::copy((IRFrame*)rxq, frame);
         rxq_depth = sizeof(IRFrame);
+    } else {
+        debug("recv queue buffer overrun!");
     }
     FrameFactory.free(frame);
 }
