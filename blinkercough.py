@@ -181,6 +181,16 @@ class BlinkerCough:
                 print "calling BC recv hook"
                 BlinkerCough.receive_hook(source, data)
 
+    def poll_for(self, seconds):
+        sys.stdout.write("chilling for %d seconds" % seconds)
+        sys.stdout.flush()
+        then = datetime.now()
+        while True:
+            self.poll()
+            if (datetime.now() - then).total_seconds() >= seconds:
+                break
+        print "done"
+
     def get_address(self):
         lower = self.device.read_register(4)
         upper = self.device.read_register(5)
