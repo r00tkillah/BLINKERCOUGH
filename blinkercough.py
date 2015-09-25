@@ -191,6 +191,14 @@ class BlinkerCough:
                 break
         print "done"
 
+    def poll_forever(self):
+        while True:
+            self.poll()
+            time.sleep(0.5)
+            sys.stdout.write(".")
+            sys.stdout.flush()
+
+
     def get_address(self):
         lower = self.device.read_register(4)
         upper = self.device.read_register(5)
