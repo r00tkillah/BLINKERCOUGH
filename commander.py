@@ -89,7 +89,7 @@ elif action == 'listen':
         BC.poll()
         time.sleep(0.5)
         sys.stdout.write(".")
-        sys.stdout.flush()    
+        sys.stdout.flush()
 elif action == 'victim':
     print "playing the victim at address 0x%04x" % BC.address
     CR = CommandRunner()
