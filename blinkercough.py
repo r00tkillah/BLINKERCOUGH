@@ -28,6 +28,7 @@ import struct
 import random
 import select
 import subprocess
+from datetime import datetime
 from smbus import SMBus
 
 class SerialDevice:
