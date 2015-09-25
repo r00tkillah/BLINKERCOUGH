@@ -79,7 +79,18 @@ elif action == 'sendstuff':
     to = 0000
     if len(sys.argv) == 4:
         to = convert(sys.argv[3])
-    BC.send(to, '\xF0'*120)
+    for i in range(0,5):
+        print "sending packet %d to: 0x%04x" % (i, to)
+        stufflen = 120
+        stuff = '\xFE\xED\xFA\xCE\xDE\xAD\xBE\xBE\xEF'
+        stuff += '\xff'*(119 - len(stuff))+'\xf0'
+        BC.send(to, stuff)
+        BC.poll_for(35)
+    while True:
+        BC.poll()
+        time.sleep(0.5)
+        sys.stdout.write(".")
+        sys.stdout.flush()
 elif action == 'listen':
     BlinkerCough.receive_hook = staticmethod(print_hook)
     print "waiting for packets at address 0x%04x" % BC.address
