@@ -152,6 +152,7 @@ class BlinkerCough:
 
 
     def send(self, destination, data):
+        print "sending from 0x%04x to 0x%04x" % (self.address, destination)
         frame = struct.pack(BlinkerCough.fmt, self.address, destination,
                             0x00, #type; hops
                             data,
@@ -164,7 +165,6 @@ class BlinkerCough:
         i = 0
         while True:
             rx_depth = struct.unpack('B', self.device.read_register(0))[0]
-            print "rx_depth = ", rx_depth
             if rx_depth == 0:
                 break
             c = (self.device.read_register(1))
