@@ -81,7 +81,7 @@ elif action == 'sendstuff':
         to = convert(sys.argv[3])
     BC.send(to, '\xF0'*120)
 elif action == 'listen':
-    BC.receive_hook = staticmethod(print_hook)
+    BlinkerCough.receive_hook = staticmethod(print_hook)
     print "waiting for packets at address 0x%04x" % BC.address
     sys.stdout.write("polling...")
     sys.stdout.flush()
@@ -92,8 +92,8 @@ elif action == 'listen':
         sys.stdout.flush()
 elif action == 'victim':
     print "playing the victim at address 0x%04x" % BC.address
-    CR = CommandRunner()
-    BC.receive_hook = CR.on_recv
+    CR = CommandRunner(BC)
+    BlinkerCough.receive_hook = CR.on_recv
     CommandRunner.send_hook = BC.send
     sys.stdout.write("polling...")
     sys.stdout.flush()
@@ -109,8 +109,8 @@ elif action == 'victimize':
     victim = convert(sys.argv[3])
     cmd = sys.argv[4]
     print "victim: 0x%04x cmd '%s'" % (victim, cmd)
-    CR = CommandRunner()
-    BC.receive_hook = CR.on_recv
+    CR = CommandRunner(BC)
+    BlinkerCough.receive_hook = CR.on_recv
     CommandRunner.send_hook = BC.send
     CommandRunner.output_hook = staticmethod(output_hook)
     CommandRunner.terminated_hook = staticmethod(terminated_hook)
