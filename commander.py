@@ -69,7 +69,7 @@ except ValueError:
 action = sys.argv[2]
 if action == 'getaddr':
     addr = BC.get_address()
-    print "blinker cough address is:", addr
+    print "blinker cough address is: 0x%04x" % addr
 elif action == 'setaddr':
     if len(sys.argv) != 4:
         print "didn't supply address"
