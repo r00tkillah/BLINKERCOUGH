@@ -24,7 +24,7 @@ AVR_TOOLS_DIR  = /usr
 USER_LIB_PATH  = libraries
 
 TARGET         = blinkercough
-ARDUINO_LIBS   = SoftwareSerial EventManager/EventManager Wire
+ARDUINO_LIBS   = SoftwareSerial EventManager/EventManager Wire EEPROM
 
 ISP_PROG = usbasp
 BOARD_TAG = nano328
