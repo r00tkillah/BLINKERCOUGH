@@ -123,7 +123,8 @@ class i2cDevice:
 
     def read_register(self, address):
         self.bus.write_byte(self.BC_addr, address)
-        return self.bus.read_byte(self.BC_addr)
+        data = struct.pack('B', self.bus.read_byte(self.BC_addr))
+        return data
 
     def write_register(self, address, data):
         self.bus.write_byte_data(self.BC_addr, address, data)
