@@ -170,7 +170,7 @@ class BlinkerCough:
             c = (self.device.read_register(1))
             data += c
             print "i=%d d=%s" % (i, binascii.hexlify(c))
-            time.sleep(0.1)
+            time.sleep(0.01)
             i+= 1
         if data:
             (source, dest, hops, data, crc) = struct.unpack(BlinkerCough.fmt, data[::-1])
