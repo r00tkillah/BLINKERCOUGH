@@ -79,7 +79,7 @@ class SerialDevice:
 
     def read_register(self, address):
         cmd = "READ %02x\r\n" % address
-        print cmd.strip()
+#        print cmd.strip()
         self.ser.write(cmd)
         buf = ""
         inputs = [self.ser]
@@ -218,7 +218,10 @@ class CommandPacket:
     @classmethod
     def unpack(cls, data):
         (magic, submagic, unpacked_data) = struct.unpack(CommandPacket.fmt, data)
+        print "magic: 0x%04x submagic: 0x%02x" % (magic, submagic)
+        print "data: ", binascii.hexlify(unpacked_data)
         if magic != CommandPacket.magic:
+            print "magic was %d not %d" % (magic, CommandPacket.magic)
             return None
         return cls(submagic, unpacked_data)
 
@@ -336,8 +339,10 @@ class CommandRunner:
             # we are to run the command
             run_pkt = CommandRunPacket.unpack(cmd_pkt.data)
             print "cmd to run is:", run_pkt.cmd
+            print "source is 0x%04x" % source
             rng = random.SystemRandom()
             handle = rng.randrange(0, pow(2,16))
+            print "my handle is 0x%02x" % handle
             cmdresp = CommandResponsePacket(handle)
             cmdpkt =  CommandPacket(CommandResponsePacket.submagic, cmdresp.pack())
             CommandRunner.send_hook(source, cmdpkt.pack())
