@@ -82,7 +82,7 @@ elif action == 'sendstuff':
     for i in range(0,5):
         print "sending packet %d to: 0x%04x" % (i, to)
         stufflen = 120
-        stuff = '\xFE\xED\xFA\xCE\xDE\xAD\xBE\xBE\xEF'
+        stuff = '\xFE\xED\xFA\xCE\xDE\xAD\xBE\xEF'
         stuff += '\xff'*(119 - len(stuff))+'\xf0'
         BC.send(to, stuff)
         BC.poll_for(35)
