@@ -392,7 +392,7 @@ class CommandRunner:
             CommandRunner.send_hook(source, cmdpkt.pack())
 
         if cmd_pkt.submagic == CommandResponsePacket.submagic:
-            print "packet is commadn response packet"
+            print "packet is command response packet"
             resp_packet = CommandResponsePacket.unpack(cmd_pkt.data)
             self.handle = resp_packet.handle
             print "handle is %04x" % self.handle
