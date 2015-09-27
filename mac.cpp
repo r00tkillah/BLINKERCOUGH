@@ -158,6 +158,13 @@ void BlinkerMac::recv(const uint8_t c)
         if (buf->valid()) {
             buf->ntoh();
 
+            if (buf->source == address) {
+                // don't relay our own packets
+                debugend();
+                reset();
+                return;
+            }
+
             if (buf->destination != address) {
                 if (buf->hops < MAX_HOPS) {
                     auto newbuf = FrameFactory.alloc();
