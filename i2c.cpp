@@ -137,6 +137,12 @@ void i2cRegisters::write(uint8_t address, uint8_t data)
             }
             eventManager.queueEvent(I2CTXEVENT, (int)frame);
         }
+    case 7: //new secret register: "reset"
+        //actually, this isn't a reset.  wdt reset seems to cause an
+        //infinite loop.  This may be due to the bootloader, or
+        //perhaps setup() is not early enough.
+        asm volatile ("  jmp 0");
+        break;
 
     default:
         break;
