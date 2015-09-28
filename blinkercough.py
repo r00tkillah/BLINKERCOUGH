@@ -123,11 +123,13 @@ class i2cDevice:
 
     def read_register(self, address):
         self.bus.write_byte(self.BC_addr, address)
+        time.sleep(0.02)
         data = struct.pack('B', self.bus.read_byte(self.BC_addr))
         return data
 
     def write_register(self, address, data):
         self.bus.write_byte_data(self.BC_addr, address, data)
+        time.sleep(0.02)
 
 
 class BlinkerCough:
